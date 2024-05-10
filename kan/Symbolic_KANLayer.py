@@ -9,7 +9,7 @@ from .utils import *
 class Symbolic_KANLayer(nn.Module):
     '''
     KANLayer class
-
+    定义了一个名为 Symbolic_KANLayer 的 PyTorch 模块，用于构建具有符号激活函数的神经网络层。
     Attributes:
     -----------
         in_dim: int
@@ -62,14 +62,15 @@ class Symbolic_KANLayer(nn.Module):
         super(Symbolic_KANLayer, self).__init__()
         self.out_dim = out_dim
         self.in_dim = in_dim
+        #mask：一个形状为 (out_dim, in_dim) 的零矩阵，用于在前向传播时进行掩码操作。
         self.mask = torch.nn.Parameter(torch.zeros(out_dim, in_dim, device=device)).requires_grad_(False)
-        # torch
+        # torch， funs：一个形状为 (out_dim, in_dim) 的列表，用于存储每个神经元的符号函数。
         self.funs = [[lambda x: x for i in range(self.in_dim)] for j in range(self.out_dim)]
-        # name
+        # name，一个形状为 (out_dim, in_dim) 的字符串列表，用于存储每个神经元的符号函数的名称。
         self.funs_name = [['' for i in range(self.in_dim)] for j in range(self.out_dim)]
-        # sympy
+        # sympy，一个形状为 (out_dim, in_dim) 的列表，用于存储每个神经元的符号函数的 SymPy 表示。
         self.funs_sympy = [['' for i in range(self.in_dim)] for j in range(self.out_dim)]
-        
+        # 一个形状为 (out_dim, in_dim, 4) 的张量，用于存储仿射变换的参数。
         self.affine = torch.nn.Parameter(torch.zeros(out_dim, in_dim, 4, device=device))
         # c*f(a*x+b)+d
         
@@ -78,7 +79,7 @@ class Symbolic_KANLayer(nn.Module):
     def forward(self, x):
         '''
         forward
-        
+        方法用于实现前向传播。在这个方法中，首先对输入进行仿射变换和符号函数处理，然后将处理后的结果进行求和得到输出。返回值包括输出 y 和处理后的激活函数值 postacts。
         Args:
         -----
             x : 2D array
@@ -120,7 +121,7 @@ class Symbolic_KANLayer(nn.Module):
     def get_subset(self, in_id, out_id):
         '''
         get a smaller Symbolic_KANLayer from a larger Symbolic_KANLayer (used for pruning)
-        
+         方法用于从一个较大的 Symbolic_KANLayer 中获取一个较小的子集，通常用于剪枝操作。该方法会返回一个新的 Symbolic_KANLayer 实例，其输入和输出维度由参数 in_id 和 out_id 指定。
         Args:
         -----
             in_id : list
@@ -153,7 +154,8 @@ class Symbolic_KANLayer(nn.Module):
     def fix_symbolic(self, i, j, fun_name, x=None, y=None, random=False, a_range=(-10,10), b_range=(-10,10), verbose=True):
         '''
         fix an activation function to be symbolic
-        
+        方法用于将激活函数固定为符号函数。可以根据提供的函数名称或者自定义的函数来选择激活函数。
+        如果提供了输入和输出数据 x 和 y，则会调用 fit_params 函数来拟合出最佳的仿射变换参数。
         Args:
         -----
             i : int

@@ -7,8 +7,23 @@ from .spline import *
 class KANLayer(nn.Module):
     """
     KANLayer class
-    
-
+    属性：
+    in_dim: 输入维度。
+    out_dim: 输出维度。
+    size: 分段多项式的数量，等于输入维度乘以输出维度。
+    k: 分段多项式的阶数。
+    grid: 分段函数的网格点，形状为 (size, num)，其中 num 是网格间隔的数量。
+    noises: 初始化时注入到分段多项式中的噪声，用于打破退化性。
+    coef: B-样条基函数的系数。
+    scale_base: 剩余函数 b(x) 的幅度。
+    scale_sp: 基函数 spline(x) 的幅度。
+    base_fun: 剩余函数 b(x)。
+    mask: 分段多项式的掩码，用于指示某些激活函数为零函数。
+    grid_eps: 在 update_grid_from_samples() 中使用的超参数。
+    weight_sharing: 允许激活函数共享参数的权重。
+    lock_counter: 锁定激活函数以共享参数的计数器。
+    lock_id: 已锁定激活函数的 ID。
+    device: 设备。
     Attributes:
     -----------
         in_dim: int
@@ -46,6 +61,13 @@ class KANLayer(nn.Module):
     
     Methods:
     --------
+            __init__(): 初始化一个 KANLayer 实例。
+        forward(): 前向传播。
+        update_grid_from_samples(): 根据样本的输入激活更新网格。
+        initialize_grid_from_parent(): 从另一个模型初始化网格。
+        get_subset(): 获取 KANLayer 的子集（用于修剪）。
+        lock(): 锁定若干激活函数以共享参数。
+        unlock(): 解锁已锁定的激活函数。
         __init__():
             initialize a KANLayer
         forward():
@@ -106,21 +128,21 @@ class KANLayer(nn.Module):
         (3, 5)
         '''
         super(KANLayer, self).__init__()
-        # size 
+        # size ，self.size = size = out_dim * in_dim: 计算并设置 size 属性，即分段多项式的数量，它等于输出维度乘以输入维度。
         self.size = size = out_dim * in_dim
         self.out_dim = out_dim
         self.in_dim = in_dim
         self.num = num
         self.k = k
 
-        # shape: (size, num)
+        # shape: (size, num)， 将网格张量转换为可训练参数，并将 requires_grad 设置为 False，因为这些参数在初始化时是固定的，不需要梯度更新。用 torch.linspace() 函数生成一组均匀间隔的网格点，然后使用 torch.einsum() 计算笛卡尔积，创建一个 (size, num) 形状的网格张量。
         self.grid = torch.einsum('i,j->ij', torch.ones(size, device=device), torch.linspace(grid_range[0], grid_range[1], steps=num + 1, device=device))
-        self.grid = torch.nn.Parameter(self.grid).requires_grad_(False)
-        noises = (torch.rand(size, self.grid.shape[1]) - 1 / 2) * noise_scale / num
+        self.grid = torch.nn.Parameter(self.grid).requires_grad_(False) #将网格张量转换为可训练参数，并将 requires_grad 设置为 False，因为这些参数在初始化时是固定的，不需要梯度更新。
+        noises = (torch.rand(size, self.grid.shape[1]) - 1 / 2) * noise_scale / num #生成噪声张量，用于注入到分段多项式中，以破坏其退化性。
         noises = noises.to(device)
-        # shape: (size, coef)
+        # shape: (size, coef) #计算并设置 B-样条基函数的系数。这里调用了一个名为 curve2coef 的函数来计算系数。
         self.coef = torch.nn.Parameter(curve2coef(self.grid, noises, self.grid, k, device))
-        if isinstance(scale_base, float):
+        if isinstance(scale_base, float): #检查 scale_base 是否为浮点数类型，如果是，则将其转换为 torch.Tensor 类型，并设置为可训练参数；否则，将其直接转换为 torch.Tensor 类型。
             self.scale_base = torch.nn.Parameter(torch.ones(size, device=device) * scale_base).requires_grad_(sb_trainable)  # make scale trainable
         else:
             self.scale_base = torch.nn.Parameter(torch.FloatTensor(scale_base).to(device)).requires_grad_(sb_trainable)

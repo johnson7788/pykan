@@ -3,8 +3,10 @@ import torch
 from sklearn.linear_model import LinearRegression
 import sympy
 
+# 用于生成符号回归数据集的工具函数
 # sigmoid = sympy.Function('sigmoid')
 # name: (torch implementation, sympy implementation)
+# 代码中的SYMBOLIC_LIB是一个字典，它包含了一些常见的符号函数及其对应的PyTorch和Sympy实现。用户可以根据需要使用这些现成的符号函数，也可以通过add_symbolic函数自定义添加新的符号函数。
 SYMBOLIC_LIB = {'x': (lambda x: x, lambda x: x),
                  'x^2': (lambda x: x**2, lambda x: x**2),
                  'x^3': (lambda x: x**3, lambda x: x**3),
@@ -45,7 +47,7 @@ def create_dataset(f,
                    seed=0):
     '''
     create dataset
-    
+    创建符号回归数据集的函数。可以根据给定的符号函数生成训练集和测试集。
     Args:
     -----
         f : function
@@ -127,12 +129,19 @@ def create_dataset(f,
 def fit_params(x, y, fun, a_range=(-10,10), b_range=(-10,10), grid_number=101, iteration=3, verbose=True, device='cpu'):
     '''
     fit a, b, c, d such that
-    
+    用于拟合符号函数的参数。通过给定的输入数据和目标数据，尝试找到最佳的函数参数，使得符号函数能够最好地拟合输入数据。
     .. math::
         |y-(cf(ax+b)+d)|^2
         
     is minimized. Both x and y are 1D array. Sweep a and b, find the best fitted model.
-    
+    x：输入数据的一维数组，表示自变量。
+    y：目标数据的一维数组，表示因变量。
+    fun：符号函数，是一个函数对象。
+    a_range 和 b_range：参数 a 和 b 的搜索范围，默认为 (-10, 10)。
+    grid_number：搜索范围内的步数，默认为 101。
+    iteration：迭代次数，默认为 3。
+    verbose：是否打印额外信息，默认为 True。
+    device：指定设备，默认为 'cpu'。
     Args:
     -----
         x : 1D array
@@ -166,9 +175,12 @@ def fit_params(x, y, fun, a_range=(-10,10), b_range=(-10,10), grid_number=101, i
             best fitted d
         r2_best : float
             best r2 (coefficient of determination)
-    
+    函数首先通过迭代搜索 a 和 b 的最佳值，以最小化损失函数 |y-(cf(ax+b)+d)|^2。然后，根据最佳的 a 和 b 值，计算符号函数 fun 的输出，拟合一个线性模型来获取参数 c 和 d。最后返回最佳参数和对应的拟合效果（用 R^2 值衡量）
     Example
     -------
+    首先生成了一组输入数据 x 和相应的目标数据 y。输入数据 x 是在 -1 到 1 之间均匀分布的 100 个数据点，而目标数据 y 是根据 x 通过一个带有噪声的正弦函数生成的。
+    接着，我们调用了 fit_params 函数，传入了输入数据 x、目标数据 y 和符号函数 torch.sin。这个函数的目标是通过拟合参数 a、b、c 和 d，找到一个能够最好地拟合输入数据 x 和目标数据 y 的符号函数模型。
+    最后，函数返回了拟合出来的最佳参数和对应的拟合效果，其中 r2 是拟合效果的评价指标，越接近 1 表示拟合效果越好。在这个示例中，r2 的值非常接近 1，表明拟合效果非常好，而返回的参数值是 (2.9982, 1.9996, 5.0053, 0.7011)，分别对应着拟合出的 a、b、c 和 d。
     >>> num = 100
     >>> x = torch.linspace(-1,1,steps=num)
     >>> noises = torch.normal(0,1,(num,)) * 0.02
@@ -233,7 +245,7 @@ def fit_params(x, y, fun, a_range=(-10,10), b_range=(-10,10), grid_number=101, i
 def add_symbolic(name, fun):
     '''
     add a symbolic function to library
-    
+    add_symbolic: 用于向符号库中添加新的符号函数。
     Args:
     -----
         name : str

@@ -24,8 +24,10 @@ class KAN(nn.Module):
             KANLayers
         depth: int
             depth of KAN
-        width: list
-            number of neurons in each layer. e.g., [2,5,5,3] means 2D inputs, 5D outputs, with 2 layers of 5 hidden neurons.
+        width: list， width：一个列表，指定了网络每一层的神经元数量，包括输入和输出层。
+            number of neurons in each layer. e.g., [2,5,5,3] means 2D inputs, 3D outputs, with 2 layers of 5 hidden neurons.
+        grid：一个整数，指定了分段多项式的网格数量。
+        k：一个整数，指定了分段多项式的阶数。
         grid: int
             the number of grid intervals
         k: int
@@ -90,15 +92,21 @@ class KAN(nn.Module):
                 number of grid intervals. Default: 3.
             k : int
                 order of piecewise polynomial. Default: 3.
+            noise_scale、noise_scale_base：两个浮点数，分别表示注入到分段多项式和基函数的噪声的初始值。
             noise_scale : float
                 initial injected noise to spline. Default: 0.1.
             base_fun : fun
+            base_fun：一个 PyTorch 函数，表示基函数。
                 the residual function b(x). Default: torch.nn.SiLU().
             symbolic_enabled : bool
+            s   ymbolic_enabled：一个布尔值，表示是否计算符号。
                 compute or skip symbolic computations (for efficiency). By default: True. 
             bias_trainable : bool
+            bias_trainable、sp_trainable、sb_trainable：三个布尔值，分别表示是否更新偏置、分段多项式参数和符号函数参数。
                 bias parameters are updated or not. By default: True
             grid_eps : float
+            grid_eps：一个浮点数，表示网格的范围。
+            grid_range：一个列表，设置网格的范围。
                 When grid_eps = 0, the grid is uniform; when grid_eps = 1, the grid is partitioned using percentiles of samples. 0 < grid_eps < 1 interpolates between the two extremes. Default: 0.02.
             grid_range : list/np.array of shape (2,))
                 setting the range of grids. Default: [-1,1].
@@ -130,12 +138,12 @@ class KAN(nn.Module):
         ### initializeing the numerical front ###
 
         self.biases = []
-        self.act_fun = []
+        self.act_fun = [] #self.act_fun 是一个空列表，用于存储 KAN 层。
         self.depth = len(width) - 1
         self.width = width
 
         for l in range(self.depth):
-            # splines
+            # splines， tensor([0.9153, 0.5484])
             scale_base = 1 / np.sqrt(width[l]) + (torch.randn(width[l] * width[l + 1], ) * 2 - 1) * noise_scale_base
             sp_batch = KANLayer(in_dim=width[l], out_dim=width[l + 1], num=grid, k=k, noise_scale=noise_scale, scale_base=scale_base, scale_sp=1., base_fun=base_fun, grid_eps=grid_eps, grid_range=grid_range, sp_trainable=sp_trainable,
                                 sb_trainable=sb_trainable, device=device)
